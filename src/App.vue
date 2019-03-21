@@ -9,34 +9,40 @@
             <el-col :span="12" v-bind:style="{width:playerOptions.width+'px'}">
                 <videoPlayer
                         class="video-player-box"
-                         ref="videoPlayer"
-                         :options="playerOptions"
-                         :playsinline="true"
-                         customEventName="customstatechangedeventname"
+                        ref="videoPlayer"
+                        :options="playerOptions"
+                        :playsinline="true"
+                        customEventName="customstatechangedeventname"
 
-                         @play="onPlayerPlay($event)"
-                         @pause="onPlayerPause($event)"
-                         @ended="onPlayerEnded($event)"
-                         @waiting="onPlayerWaiting($event)"
-                         @playing="onPlayerPlaying($event)"
-                         @loadeddata="onPlayerLoadeddata($event)"
-                         @timeupdate="onPlayerTimeupdate($event)"
-                         @canplay="onPlayerCanplay($event)"
-                         @canplaythrough="onPlayerCanplaythrough($event)"
+                        @play="onPlayerPlay($event)"
+                        @pause="onPlayerPause($event)"
+                        @ended="onPlayerEnded($event)"
+                        @waiting="onPlayerWaiting($event)"
+                        @playing="onPlayerPlaying($event)"
+                        @loadeddata="onPlayerLoadeddata($event)"
+                        @timeupdate="onPlayerTimeupdate($event)"
+                        @canplay="onPlayerCanplay($event)"
+                        @canplaythrough="onPlayerCanplaythrough($event)"
 
-                         @statechanged="playerStateChanged($event)"
-                         @ready="playerReadied">
+                        @statechanged="playerStateChanged($event)"
+                        @ready="playerReadied">
                 </videoPlayer>
+            </el-col>
+        </el-row>
+
+        <el-row type="flex" justify="center" v-for="segment in segments">
+            <el-col :span="12">
+                <span>{{ segment.key }}</span>
+                <el-slider range v-model="segment.value"></el-slider>
             </el-col>
         </el-row>
 
         <el-row type="flex" justify="center">
             <el-col :span="12">
-                <el-slider range></el-slider>
-                <el-slider type="danger" range></el-slider>
-                <el-slider range></el-slider>
+                <el-slider v-model="player_process" :max="1000"></el-slider>
             </el-col>
         </el-row>
+
         <el-row type="flex" justify="center">
             <el-col :span="12">
                 <el-input-number size="mini"></el-input-number>
@@ -72,6 +78,14 @@
         data() {
 
             return {
+                player_process: 0,
+                videos: [],
+                idx: 0,
+                segments: [
+                    {value: [4, 8], key: "Long Jump"},
+                    {value: [40, 80], key: "Clean and Jerk"},
+                    {value: [50, 90], key: "Brush tooth"},
+                ],
                 playerOptions: {
                     width: '800',
                     autoplay: true,
@@ -88,6 +102,18 @@
                     }],
                     poster: "https://surmon-china.github.io/vue-quill-editor/static/images/surmon-1.jpg",
                 }
+            }
+        },
+        computed: {
+            player() {
+                return this.$refs.videoPlayer.player
+            }
+        },
+        methods: {
+            onPlayerTimeupdate(player) {
+                console.log(player.currentTime());
+                console.log(player.duration());
+                this.player_process = player.currentTime() / player.duration() * 1000;
             }
         }
     }
