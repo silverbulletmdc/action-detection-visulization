@@ -20,22 +20,23 @@
                         <el-col :span="24">
                             <el-radio-group v-model="data_source">
                                 <el-radio-button label="default">默认数据集</el-radio-button>
-                                <el-radio-button label="upload">上传文件</el-radio-button>
-                                <el-radio-button label="url">输入url</el-radio-button>
+                                <el-radio-button label="upload" disabled>上传文件</el-radio-button>
+                                <el-radio-button label="url" disabled>输入url</el-radio-button>
                             </el-radio-group>
                         </el-col>
                     </el-row>
                     <el-row>
                         <el-col>
-                            <el-upload v-show="data_source==='upload'" class="my">
+                            <el-upload v-if="data_source==='upload'" class="my">
                                 <el-button size="small" type="primary">
                                     点击上传
                                 </el-button>
                             </el-upload>
                             <el-input placeholder="请输入视频目录的url" v-show="data_source==='url'" class="my"></el-input>
-                            <el-select v-show="data_source==='default'" v-model="value" placeholder="请选择">
-                                <el-option value="ActivityNet"></el-option>
-                                <el-option value="Thumos"></el-option>
+                            <el-select v-if="data_source==='default'" v-model="dataset" placeholder="请选择">
+                                <el-option value="activity_net_1_3_new.json"></el-option>
+                                <el-option value="activity_net.v1-2.min.json"></el-option>
+                                <el-option value="Thumos" disabled>Thumos</el-option>
                             </el-select>
                         </el-col>
                     </el-row>
@@ -44,7 +45,7 @@
                     <el-row>
                         <el-radio-group v-model="video_source">
                             <el-radio-button label="youtube">Youtube</el-radio-button>
-                            <el-radio-button label="fileserver">文件服务器</el-radio-button>
+                            <el-radio-button label="fileserver" disabled>文件服务器</el-radio-button>
                         </el-radio-group>
                     </el-row>
                     <el-row>
@@ -57,22 +58,12 @@
                 </el-aside>
                 <el-main>
                     <el-row type="flex" justify="center">
-                        <el-col :span="12">
-                            <el-button-group>
-                                <el-button size="mini" type="info">上一个视频</el-button>
-                                <el-button size="mini" type="success">播放</el-button>
-                                <el-button size="mini" type="danger">暂停</el-button>
-                                <el-button size="mini" type="primary">下一个视频</el-button>
-                            </el-button-group>
-                        </el-col>
-                    </el-row>
-                    <el-row type="flex" justify="center">
-                        <el-col :span="12" v-if="video_source==='youtube'">
-                            <youtube :video-id="video_id" @playing="youtube_playing" ref="youtube">
+                        <el-col :span="12" v-show="video_source==='youtube'">
+                            <youtube :video-id="video_id" @playing="youtubePlaying" ref="youtube">
                             </youtube>
                         </el-col>
                         <el-col :span="12" v-bind:style="{width:playerOptions.width+'px'}"
-                                v-if="video_source==='fileserver'">
+                                v-show="video_source==='fileserver'">
                             <videoPlayer
                                     class="video-player-box"
                                     ref="videoPlayer"
@@ -96,7 +87,15 @@
                             </videoPlayer>
                         </el-col>
                     </el-row>
-
+                    <el-row type="flex" justify="center" v-if="idx!==-1">
+                        {{ inAction ? "In action" : "Background" }}
+                    </el-row>
+                    <el-row type="flex" justify="center">
+                        <el-col :span="12">
+                            <el-input-number size="mini" v-model="idx"></el-input-number>
+                            / {{ videos.length }}
+                        </el-col>
+                    </el-row>
 
                     <el-row type="flex" justify="center">
                         <el-col :span="4">
@@ -118,13 +117,6 @@
                         </el-row>
                     </div>
 
-
-                    <el-row type="flex" justify="center">
-                        <el-col :span="12">
-                            <el-input-number size="mini" v-model="idx"></el-input-number>
-                            / {{ videos.length }}
-                        </el-col>
-                    </el-row>
 
                 </el-main>
             </el-container>
@@ -156,6 +148,7 @@
             return {
                 data_source: "default",
                 video_source: "youtube",
+                dataset: "activity_net_1_3_new.json",
                 video_id: "",
                 player_process: 0,
                 videos: [],
@@ -183,7 +176,7 @@
             player() {
                 return this.$refs.videoPlayer.player
             },
-            youtube_player() {
+            youtubePlayer() {
                 return this.$refs.youtube.player
             },
             video() {
@@ -192,9 +185,25 @@
                     this.video_id = this.videos[this.idx];
                     return this.database[this.video_id];
                 } else {
-                    return []
+                    return {}
                 }
             },
+            inAction(){
+                if(this.video === {} )
+                    return false;
+                for(let ann of this.video.annotations){
+                    console.log(ann);
+                    let segment = ann.segment;
+                    if (this.player_process > segment[0] && this.player_process < segment[1]){
+                        console.log("In action")
+                        return true
+                    }
+                }
+                return false
+            }
+        },
+        mounted(){
+            this.getData()
         },
         methods: {
             onPlayerTimeupdate(player) {
@@ -203,15 +212,22 @@
                 this.player_process = player.currentTime();
             },
             getData() {
-                axios.get('/activity_net_1_3_new.json')
+                if(this.data_source === 'default'){
+                    axios.get('/' + this.dataset)
                     .then(response => {
                         this.database = response.data.database;
                         this.videos = Object.keys(this.database);
                         this.idx = 0;
                         console.log(response);
                     });
+                }
+
             },
-            youtube_playing() {
+            setProgress(){
+                console.log(this.youtubePlayer)
+                this.youtubePlayer.setCurrentTime(this.player_process)
+            },
+            youtubePlaying() {
                 console.log("We are watching");
                 try {
                     clearSetInterval(this.timer);
@@ -220,15 +236,13 @@
                 }
                 this.timer = setInterval(
                     () => {
-                        this.youtube_player.getCurrentTime().then((value) => {
+                        this.youtubePlayer.getCurrentTime().then((value) => {
                             this.player_process = value;
                         });
                     }
                     , 1000);
             },
-            updateYoutubeTime() {
-                console.log(this.player)
-            }
+
         }
     }
 </script>

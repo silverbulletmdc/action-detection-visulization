@@ -1,5 +1,10 @@
 # action-detection-visualization
 
+This project is used for the visualization of action
+detection dataset. Demo page is in [demo](https://silverbulletmdc.github.io/action_detection_visualization)
+
+![web_clip.png](web_clip.png)
+
 ## Project setup
 ```
 npm install
